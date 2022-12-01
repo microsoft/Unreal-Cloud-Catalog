@@ -1,0 +1,6 @@
+name: Unreal-Cloud-DDC
+version: 1.0.0
+summary: Unreal Cloud DDC on Azure
+description: Deploys Unreal Cloud DDC onto Azure
+runner: ARM
+templatePath: azuredeploy.json
