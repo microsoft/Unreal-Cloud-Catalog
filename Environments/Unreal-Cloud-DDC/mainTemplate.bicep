@@ -53,7 +53,7 @@ param epicEULA bool = false
 param managedResourceGroupName string = 'mrg'
 
 @allowed([ 'new', 'existing' ])
-param publisher string = 'prod'
+param publisher string = 'dev'
 param publishers object = {
   dev: {
     name: 'preview'
