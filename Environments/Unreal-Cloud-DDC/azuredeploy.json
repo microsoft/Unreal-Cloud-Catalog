@@ -1,0 +1,796 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.10.61.36676",
+      "templateHash": "862763089148125788"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Deployment Location"
+      }
+    },
+    "resourceGroupName": {
+      "type": "string",
+      "defaultValue": "canary-horde-storage"
+    },
+    "secondaryLocations": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Secondary Deployment Locations"
+      }
+    },
+    "newOrExistingKubernetes": {
+      "type": "string",
+      "defaultValue": "new",
+      "allowedValues": [
+        "new",
+        "existing"
+      ]
+    },
+    "prefix": {
+      "type": "string",
+      "defaultValue": "[uniqueString(parameters('location'), resourceGroup().id, deployment().name)]"
+    },
+    "name": {
+      "type": "string",
+      "defaultValue": "horde-storage"
+    },
+    "agentPoolCount": {
+      "type": "int",
+      "defaultValue": 3
+    },
+    "agentPoolName": {
+      "type": "string",
+      "defaultValue": "k8agent"
+    },
+    "vmSize": {
+      "type": "string",
+      "defaultValue": "Standard_L8s_v3"
+    },
+    "hostname": {
+      "type": "string",
+      "defaultValue": "deploy1.horde-storage.gaming.azure.com"
+    },
+    "isZoneRedundant": {
+      "type": "bool",
+      "defaultValue": false
+    },
+    "assignRole": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Running this template requires roleAssignment permission on the Resource Group, which require an Owner role. Set this to false to deploy some of the resources"
+      }
+    },
+    "storageAccountTier": {
+      "type": "string",
+      "defaultValue": "Standard",
+      "metadata": {
+        "description": "Storage Account Tier. Standard or Premium."
+      },
+      "allowedValues": [
+        "Standard",
+        "Premium"
+      ]
+    },
+    "storageAccountType": {
+      "type": "string",
+      "defaultValue": "[if(parameters('isZoneRedundant'), format('{0}_ZRS', parameters('storageAccountTier')), format('{0}_LRS', parameters('storageAccountTier')))]",
+      "metadata": {
+        "description": "Storage Account Type. Use Zonal Redundant Storage when able."
+      }
+    },
+    "newOrExistingStorageAccount": {
+      "type": "string",
+      "defaultValue": "new",
+      "allowedValues": [
+        "new",
+        "existing"
+      ]
+    },
+    "storageAccountName": {
+      "type": "string",
+      "defaultValue": "[format('hordestore{0}', uniqueString(resourceGroup().id, subscription().subscriptionId, parameters('location'), parameters('storageAccountType')))]"
+    },
+    "newOrExistingKeyVault": {
+      "type": "string",
+      "defaultValue": "new",
+      "allowedValues": [
+        "new",
+        "existing"
+      ]
+    },
+    "keyVaultName": {
+      "type": "string",
+      "defaultValue": "[take(format('{0}', uniqueString(resourceGroup().id, subscription().subscriptionId, parameters('publishers')[parameters('publisher')].version, parameters('location'))), 24)]"
+    },
+    "newOrExistingPublicIp": {
+      "type": "string",
+      "defaultValue": "new",
+      "allowedValues": [
+        "new",
+        "existing"
+      ]
+    },
+    "publicIpName": {
+      "type": "string",
+      "defaultValue": "[format('hordePublicIP{0}', uniqueString(resourceGroup().id, subscription().subscriptionId, parameters('publishers')[parameters('publisher')].version, parameters('location')))]"
+    },
+    "newOrExistingTrafficManager": {
+      "type": "string",
+      "defaultValue": "new",
+      "allowedValues": [
+        "new",
+        "existing"
+      ]
+    },
+    "trafficManagerName": {
+      "type": "string",
+      "defaultValue": "[format('hordePublicIP{0}', uniqueString(resourceGroup().id, subscription().subscriptionId, parameters('publishers')[parameters('publisher')].version, parameters('location')))]"
+    },
+    "trafficManagerDnsName": {
+      "type": "string",
+      "defaultValue": "[format('tmp-{0}', uniqueString(resourceGroup().id, subscription().id))]",
+      "metadata": {
+        "description": "Relative DNS name for the traffic manager profile, must be globally unique."
+      }
+    },
+    "newOrExistingCosmosDB": {
+      "type": "string",
+      "defaultValue": "new",
+      "allowedValues": [
+        "new",
+        "existing"
+      ]
+    },
+    "cosmosDBName": {
+      "type": "string",
+      "defaultValue": "[format('hordeDB-{0}', uniqueString(resourceGroup().id, subscription().subscriptionId, parameters('location')))]"
+    },
+    "servicePrincipalClientID": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "workerServicePrincipalClientID": {
+      "type": "string",
+      "defaultValue": "[parameters('servicePrincipalClientID')]"
+    },
+    "workerServicePrincipalSecret": {
+      "type": "secureString",
+      "defaultValue": ""
+    },
+    "enableCert": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable to configure certificate. Default: true"
+      }
+    },
+    "certificateName": {
+      "type": "string",
+      "defaultValue": "unreal-cloud-ddc-cert",
+      "metadata": {
+        "description": "Name of Certificate (Default certificate is self-signed)"
+      }
+    },
+    "epicEULA": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Set to true to agree to the terms and conditions of the Epic Games EULA found here: https://store.epicgames.com/en-US/eula"
+      }
+    },
+    "managedResourceGroupName": {
+      "type": "string",
+      "defaultValue": "mrg"
+    },
+    "publisher": {
+      "type": "string",
+      "defaultValue": "prod",
+      "allowedValues": [
+        "dev",
+        "prod"
+      ]
+    },
+    "publishers": {
+      "type": "object",
+      "defaultValue": {
+        "dev": {
+          "name": "preview",
+          "product": "horde-storage-preview",
+          "publisher": "microsoftcorporation1590077852919",
+          "version": "0.0.75"
+        },
+        "prod": {
+          "name": "preview",
+          "product": "horde-storage-preview",
+          "publisher": "microsoft-azure-gaming",
+          "version": "0.1.24"
+        }
+      }
+    }
+  },
+  "variables": {
+    "certificateIssuer": "Subscription-Issuer",
+    "issuerProvider": "OneCertV2-PublicCA",
+    "managedResourceGroupId": "[format('{0}/resourceGroups/{1}-{2}-{3}', subscription().id, resourceGroup().name, parameters('managedResourceGroupName'), replace(parameters('publishers')[parameters('publisher')].version, '.', '-'))]",
+    "appName": "[format('{0}{1}-{2}', parameters('prefix'), parameters('name'), replace(parameters('publishers')[parameters('publisher')].version, '.', '-'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Solutions/applications",
+      "apiVersion": "2017-09-01",
+      "name": "[variables('appName')]",
+      "location": "[parameters('location')]",
+      "kind": "MarketPlace",
+      "plan": "[parameters('publishers')[parameters('publisher')]]",
+      "properties": {
+        "managedResourceGroupId": "[variables('managedResourceGroupId')]",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "secondaryLocations": {
+            "value": "[parameters('secondaryLocations')]"
+          },
+          "newOrExistingKubernetes": {
+            "value": "[parameters('newOrExistingKubernetes')]"
+          },
+          "aksName": {
+            "value": "[parameters('name')]"
+          },
+          "agentPoolCount": {
+            "value": "[parameters('agentPoolCount')]"
+          },
+          "agentPoolName": {
+            "value": "[parameters('agentPoolName')]"
+          },
+          "vmSize": {
+            "value": "[parameters('vmSize')]"
+          },
+          "hostname": {
+            "value": "[parameters('hostname')]"
+          },
+          "certificateIssuer": {
+            "value": "[variables('certificateIssuer')]"
+          },
+          "issuerProvider": {
+            "value": "[variables('issuerProvider')]"
+          },
+          "assignRole": {
+            "value": "[parameters('assignRole')]"
+          },
+          "newOrExistingStorageAccount": {
+            "value": "existing"
+          },
+          "storageAccountName": {
+            "value": "[parameters('storageAccountName')]"
+          },
+          "storageResourceGroupName": {
+            "value": "[parameters('resourceGroupName')]"
+          },
+          "newOrExistingKeyVault": {
+            "value": "[parameters('newOrExistingKeyVault')]"
+          },
+          "keyVaultName": {
+            "value": "[parameters('keyVaultName')]"
+          },
+          "newOrExistingPublicIp": {
+            "value": "[parameters('newOrExistingPublicIp')]"
+          },
+          "publicIpName": {
+            "value": "[parameters('publicIpName')]"
+          },
+          "newOrExistingTrafficManager": {
+            "value": "[parameters('newOrExistingTrafficManager')]"
+          },
+          "trafficManagerName": {
+            "value": "[parameters('trafficManagerName')]"
+          },
+          "trafficManagerDnsName": {
+            "value": "[format('{0}-{1}', parameters('trafficManagerDnsName'), replace(parameters('publishers')[parameters('publisher')].version, '.', '-'))]"
+          },
+          "newOrExistingCosmosDB": {
+            "value": "existing"
+          },
+          "cosmosDBName": {
+            "value": "[format('ddc{0}', parameters('cosmosDBName'))]"
+          },
+          "cosmosDBRG": {
+            "value": "[parameters('resourceGroupName')]"
+          },
+          "servicePrincipalClientID": {
+            "value": "[parameters('servicePrincipalClientID')]"
+          },
+          "workerServicePrincipalClientID": {
+            "value": "[parameters('workerServicePrincipalClientID')]"
+          },
+          "workerServicePrincipalSecret": {
+            "value": "[parameters('workerServicePrincipalSecret')]"
+          },
+          "certificateName": {
+            "value": "[parameters('certificateName')]"
+          },
+          "epicEULA": {
+            "value": "[parameters('epicEULA')]"
+          },
+          "isZoneRedundant": {
+            "value": "[parameters('isZoneRedundant')]"
+          },
+          "enableCert": {
+            "value": "[parameters('enableCert')]"
+          }
+        },
+        "jitAccessPolicy": null
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-10-01",
+      "name": "[format('cassandra-{0}', uniqueString(parameters('location'), resourceGroup().name))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "secondaryLocations": {
+            "value": "[parameters('secondaryLocations')]"
+          },
+          "newOrExisting": {
+            "value": "[parameters('newOrExistingCosmosDB')]"
+          },
+          "name": {
+            "value": "[format('ddc{0}', parameters('cosmosDBName'))]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.10.61.36676",
+              "templateHash": "17731129682044976512"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Deployment Location"
+              }
+            },
+            "name": {
+              "type": "string",
+              "defaultValue": "[format('cosmos-{0}', uniqueString(resourceGroup().id, parameters('location')))]"
+            },
+            "newOrExisting": {
+              "type": "string",
+              "defaultValue": "new",
+              "allowedValues": [
+                "new",
+                "existing"
+              ]
+            },
+            "maxStalenessPrefix": {
+              "type": "int",
+              "defaultValue": 100000,
+              "maxValue": 2147483647,
+              "minValue": 10,
+              "metadata": {
+                "description": "Max stale requests. Required for BoundedStaleness. Valid ranges, Single Region: 10 to 2147483647. Multi Region: 100000 to 2147483647."
+              }
+            },
+            "maxIntervalInSeconds": {
+              "type": "int",
+              "defaultValue": 300,
+              "maxValue": 86400,
+              "minValue": 5,
+              "metadata": {
+                "description": "Max lag time (minutes). Required for BoundedStaleness. Valid ranges, Single Region: 5 to 84600. Multi Region: 300 to 86400."
+              }
+            },
+            "defaultConsistencyLevel": {
+              "type": "string",
+              "defaultValue": "Session",
+              "metadata": {
+                "description": "The default consistency level of the Cosmos DB account."
+              },
+              "allowedValues": [
+                "Eventual",
+                "ConsistentPrefix",
+                "Session",
+                "BoundedStaleness",
+                "Strong"
+              ]
+            },
+            "systemManagedFailover": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Enable system managed failover for regions"
+              }
+            },
+            "secondaryLocations": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "array of region objects or regions: [{locationName: string, failoverPriority: int, isZoneRedundant: bool}] or [region: string]"
+              }
+            },
+            "enableMultipleWriteLocations": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Multi-region writes capability allows you to take advantage of the provisioned throughput for your databases and containers across the globe."
+              }
+            },
+            "EnableServerless": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Enable Serverless for consumption-based usage."
+              }
+            },
+            "isZoneRedundant": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Toggle to enable or disable zone redudance."
+              }
+            },
+            "cosmosDBRG": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().name]",
+              "metadata": {
+                "description": "Cosmos DB Resource Group. Used if Cosmos DB is in a different resource group."
+              }
+            }
+          },
+          "variables": {
+            "copy": [
+              {
+                "name": "secondaryRegions",
+                "count": "[length(parameters('secondaryLocations'))]",
+                "input": {
+                  "locationName": "[if(contains(parameters('secondaryLocations')[copyIndex('secondaryRegions')], 'locationName'), parameters('secondaryLocations')[copyIndex('secondaryRegions')].locationName, parameters('secondaryLocations')[copyIndex('secondaryRegions')])]",
+                  "failoverPriority": "[if(contains(parameters('secondaryLocations')[copyIndex('secondaryRegions')], 'failoverPriority'), parameters('secondaryLocations')[copyIndex('secondaryRegions')].failoverPriority, add(copyIndex('secondaryRegions'), 1))]",
+                  "isZoneRedundant": "[if(contains(parameters('secondaryLocations')[copyIndex('secondaryRegions')], 'isZoneRedundant'), parameters('secondaryLocations')[copyIndex('secondaryRegions')].isZoneRedundant, parameters('isZoneRedundant'))]"
+                }
+              },
+              {
+                "name": "unwind",
+                "count": "[length(variables('locations'))]",
+                "input": "[format('{0}-{1}.cassandra.cosmos.azure.com', toLower(parameters('name')), variables('locations')[copyIndex('unwind')].locationName)]"
+              }
+            ],
+            "consistencyPolicy": {
+              "Eventual": {
+                "defaultConsistencyLevel": "Eventual"
+              },
+              "ConsistentPrefix": {
+                "defaultConsistencyLevel": "ConsistentPrefix"
+              },
+              "Session": {
+                "defaultConsistencyLevel": "Session"
+              },
+              "BoundedStaleness": {
+                "defaultConsistencyLevel": "BoundedStaleness",
+                "maxStalenessPrefix": "[parameters('maxStalenessPrefix')]",
+                "maxIntervalInSeconds": "[parameters('maxIntervalInSeconds')]"
+              },
+              "Strong": {
+                "defaultConsistencyLevel": "Strong"
+              }
+            },
+            "locations": "[union(createArray(createObject('locationName', parameters('location'), 'failoverPriority', 0, 'isZoneRedundant', parameters('isZoneRedundant'))), variables('secondaryRegions'))]",
+            "locationString": "[replace(substring(string(variables('unwind')), 1, sub(length(string(variables('unwind'))), 2)), '\"', '')]"
+          },
+          "resources": [
+            {
+              "condition": "[equals(parameters('newOrExisting'), 'new')]",
+              "type": "Microsoft.DocumentDB/databaseAccounts",
+              "apiVersion": "2022-05-15",
+              "name": "[toLower(parameters('name'))]",
+              "location": "[parameters('location')]",
+              "kind": "GlobalDocumentDB",
+              "properties": {
+                "consistencyPolicy": "[variables('consistencyPolicy')[parameters('defaultConsistencyLevel')]]",
+                "locations": "[variables('locations')]",
+                "databaseAccountOfferType": "Standard",
+                "enableAutomaticFailover": "[parameters('systemManagedFailover')]",
+                "enableMultipleWriteLocations": "[parameters('enableMultipleWriteLocations')]",
+                "capabilities": "[union(createArray(createObject('name', 'EnableCassandra')), if(parameters('EnableServerless'), createArray(createObject('name', 'EnableServerless')), createArray()))]"
+              }
+            }
+          ],
+          "outputs": {
+            "connectionString": {
+              "type": "string",
+              "value": "[if(equals(parameters('newOrExisting'), 'new'), listConnectionStrings(resourceId('Microsoft.DocumentDB/databaseAccounts', toLower(parameters('name'))), '2022-05-15'), listConnectionStrings(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('cosmosDBRG')), 'Microsoft.DocumentDB/databaseAccounts', toLower(parameters('name'))), '2022-05-15')).connectionStrings[0].connectionString]",
+              "metadata": {
+                "description": "Key to connect with Cosmos DB"
+              }
+            },
+            "cassandraConnectionString": {
+              "type": "string",
+              "value": "[format('Contact Points={0}.cassandra.cosmos.azure.com,{1};Username={2};Password={3};Port=10350', toLower(parameters('name')), variables('locationString'), toLower(parameters('name')), if(equals(parameters('newOrExisting'), 'new'), listKeys(resourceId('Microsoft.DocumentDB/databaseAccounts', toLower(parameters('name'))), '2022-05-15'), listKeys(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('cosmosDBRG')), 'Microsoft.DocumentDB/databaseAccounts', toLower(parameters('name'))), '2022-05-15')).primaryMasterKey)]",
+              "metadata": {
+                "description": "Key to connect with Cosmos DB"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "copy": {
+        "name": "storageAccount",
+        "count": "[length(union(createArray(parameters('location')), parameters('secondaryLocations')))]"
+      },
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-10-01",
+      "name": "[format('storageAccount-{0}', uniqueString(union(createArray(parameters('location')), parameters('secondaryLocations'))[copyIndex()], resourceGroup().id, deployment().name))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[union(createArray(parameters('location')), parameters('secondaryLocations'))[copyIndex()]]"
+          },
+          "name": {
+            "value": "[take(format('{0}{1}', take(union(createArray(parameters('location')), parameters('secondaryLocations'))[copyIndex()], 8), parameters('storageAccountName')), 24)]"
+          },
+          "storageAccountTier": {
+            "value": "[parameters('storageAccountTier')]"
+          },
+          "storageAccountType": {
+            "value": "[parameters('storageAccountType')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.10.61.36676",
+              "templateHash": "1607937312370432823"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Deployment Location"
+              }
+            },
+            "name": {
+              "type": "string",
+              "defaultValue": "[uniqueString(resourceGroup().id)]"
+            },
+            "newOrExisting": {
+              "type": "string",
+              "defaultValue": "new",
+              "allowedValues": [
+                "new",
+                "existing"
+              ]
+            },
+            "subnetID": {
+              "type": "string",
+              "defaultValue": ""
+            },
+            "enableVNET": {
+              "type": "bool",
+              "defaultValue": false
+            },
+            "isZoneRedundant": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Toggle to enable or disable zone redudance."
+              }
+            },
+            "storageAccountTier": {
+              "type": "string",
+              "defaultValue": "Standard",
+              "metadata": {
+                "description": "Storage Account Tier. Standard or Premium."
+              },
+              "allowedValues": [
+                "Standard",
+                "Premium"
+              ]
+            },
+            "storageAccountType": {
+              "type": "string",
+              "defaultValue": "[if(parameters('isZoneRedundant'), format('{0}_ZRS', parameters('storageAccountTier')), format('{0}_LRS', parameters('storageAccountTier')))]",
+              "metadata": {
+                "description": "Storage Account Type. Use Zonal Redundant Storage when able."
+              }
+            }
+          },
+          "variables": {
+            "networkAcls": "[if(parameters('enableVNET'), createObject('defaultAction', 'Deny', 'virtualNetworkRules', createArray(createObject('action', 'Allow', 'id', parameters('subnetID')))), createObject())]"
+          },
+          "resources": [
+            {
+              "condition": "[equals(parameters('newOrExisting'), 'new')]",
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2019-06-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "[parameters('storageAccountType')]"
+              },
+              "kind": "StorageV2",
+              "properties": {
+                "encryption": {
+                  "keySource": "Microsoft.Storage",
+                  "services": {
+                    "blob": {
+                      "enabled": true
+                    },
+                    "file": {
+                      "enabled": true
+                    }
+                  }
+                },
+                "supportsHttpsTrafficOnly": true,
+                "allowBlobPublicAccess": false,
+                "networkAcls": "[variables('networkAcls')]",
+                "minimumTlsVersion": "TLS1_2"
+              }
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "value": "[if(equals(parameters('newOrExisting'), 'new'), resourceId('Microsoft.Storage/storageAccounts', parameters('name')), resourceId('Microsoft.Storage/storageAccounts', parameters('name')))]"
+            },
+            "blobStorageConnectionString": {
+              "type": "string",
+              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', parameters('name'), environment().suffixes.storage, if(equals(parameters('newOrExisting'), 'new'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('name')), '2019-06-01'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('name')), '2021-09-01')).keys[0].value)]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-10-01",
+      "name": "[format('trafficManager-{0}', uniqueString(parameters('location'), resourceGroup().id, deployment().name))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('{0}ddc', parameters('prefix'))]"
+          },
+          "newOrExisting": {
+            "value": "new"
+          },
+          "trafficManagerDnsName": {
+            "value": "[format('{0}preview.unreal-cloud-ddc', parameters('prefix'))]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.10.61.36676",
+              "templateHash": "8309655913778210233"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "defaultValue": "[format('traffic-mp-{0}', uniqueString(resourceGroup().id, subscription().id))]",
+              "metadata": {
+                "description": "Traffic Manager Profile Resource Name"
+              }
+            },
+            "trafficManagerDnsName": {
+              "type": "string",
+              "defaultValue": "[format('tmp-{0}', uniqueString(resourceGroup().id, subscription().id))]",
+              "metadata": {
+                "description": "Relative DNS name for the traffic manager profile, must be globally unique."
+              }
+            },
+            "newOrExisting": {
+              "type": "string",
+              "defaultValue": "new",
+              "allowedValues": [
+                "new",
+                "existing"
+              ]
+            },
+            "endpoints": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "An array of objects that represent the endpoints in the Traffic Manager profile. {name: string, target: string, endpointStatus: string, endpointLocation: string}"
+              }
+            },
+            "monitorConfig": {
+              "type": "object",
+              "defaultValue": {
+                "protocol": "HTTPS",
+                "port": 443,
+                "path": "/",
+                "expectedStatusCodeRanges": [
+                  {
+                    "min": 200,
+                    "max": 202
+                  },
+                  {
+                    "min": 301,
+                    "max": 302
+                  }
+                ]
+              }
+            }
+          },
+          "resources": [
+            {
+              "condition": "[equals(parameters('newOrExisting'), 'new')]",
+              "type": "Microsoft.Network/trafficmanagerprofiles",
+              "apiVersion": "2018-08-01",
+              "name": "[parameters('name')]",
+              "location": "global",
+              "properties": {
+                "profileStatus": "Enabled",
+                "trafficRoutingMethod": "Performance",
+                "dnsConfig": {
+                  "relativeName": "[toLower(parameters('trafficManagerDnsName'))]",
+                  "ttl": 30
+                },
+                "monitorConfig": {
+                  "protocol": "[if(contains(parameters('monitorConfig'), 'protocol'), parameters('monitorConfig').protocol, 'HTTPS')]",
+                  "port": "[if(contains(parameters('monitorConfig'), 'port'), parameters('monitorConfig').port, 443)]",
+                  "path": "[if(contains(parameters('monitorConfig'), 'path'), parameters('monitorConfig').path, '/')]",
+                  "expectedStatusCodeRanges": "[if(contains(parameters('monitorConfig'), 'expectedStatusCodeRanges'), parameters('monitorConfig').expectedStatusCodeRanges, createArray(createObject('min', 200, 'max', 202), createObject('min', 301, 'max', 302)))]"
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "name": {
+              "type": "string",
+              "value": "[if(equals(parameters('newOrExisting'), 'new'), parameters('name'), parameters('name'))]"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "prefix": {
+      "type": "string",
+      "value": "[parameters('prefix')]"
+    },
+    "appName": {
+      "type": "string",
+      "value": "[variables('appName')]"
+    }
+  }
+}
