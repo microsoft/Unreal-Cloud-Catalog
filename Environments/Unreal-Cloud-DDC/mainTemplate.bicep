@@ -4,10 +4,7 @@ param location string = resourceGroup().location
 @description('Secondary Deployment Locations')
 param secondaryLocations array = []
 
-@allowed([
-  'new'
-  'existing'
-])
+@allowed([ 'new', 'existing' ])
 param newOrExistingKubernetes string = 'new'
 param prefix string = uniqueString(location, resourceGroup().id, deployment().name)
 param name string = 'horde-storage'
@@ -20,40 +17,25 @@ param isZoneRedundant bool = false
 @description('Running this template requires roleAssignment permission on the Resource Group, which require an Owner role. Set this to false to deploy some of the resources')
 param assignRole bool = true
 
-@allowed([
-  'new'
-  'existing'
-])
+@allowed([ 'new', 'existing' ])
 param newOrExistingStorageAccount string = 'new'
 param storageAccountName string = 'hordestore${uniqueString(resourceGroup().id, subscription().subscriptionId, publishers[publisher].version, location)}'
 
-@allowed([
-  'new'
-  'existing'
-])
+@allowed([ 'new', 'existing' ])
 param newOrExistingKeyVault string = 'new'
 param keyVaultName string = take('${uniqueString(resourceGroup().id, subscription().subscriptionId, publishers[publisher].version, location)}', 24)
 
-@allowed([
-  'new'
-  'existing'
-])
+@allowed([ 'new', 'existing' ])
 param newOrExistingPublicIp string = 'new'
 param publicIpName string = 'hordePublicIP${uniqueString(resourceGroup().id, subscription().subscriptionId, publishers[publisher].version, location)}'
 
-@allowed([
-  'new'
-  'existing'
-])
+@allowed([ 'new', 'existing' ])
 param newOrExistingTrafficManager string = 'new'
 param trafficManagerName string = 'hordePublicIP${uniqueString(resourceGroup().id, subscription().subscriptionId, publishers[publisher].version, location)}'
 @description('Relative DNS name for the traffic manager profile, must be globally unique.')
 param trafficManagerDnsName string = 'tmp-${uniqueString(resourceGroup().id, subscription().id)}'
 
-@allowed([
-  'new'
-  'existing'
-])
+@allowed([ 'new', 'existing' ])
 param newOrExistingCosmosDB string = 'new'
 param cosmosDBName string = 'hordeDB-${uniqueString(resourceGroup().id, subscription().subscriptionId, publishers[publisher].version, location)}'
 
@@ -70,10 +52,7 @@ param epicEULA bool = false
 
 param managedResourceGroupName string = 'mrg'
 
-@allowed([
-  'dev'
-  'prod'
-])
+@allowed([ 'new', 'existing' ])
 param publisher string = 'prod'
 param publishers object = {
   dev: {
