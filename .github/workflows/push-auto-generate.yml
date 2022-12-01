@@ -49,8 +49,8 @@ jobs:
       - name: Generate ARM template from Bicep templates
         uses: Azure/bicep-build-action@v1.0.1
         with:
-          bicepFilePath: "${{ env.APPLICATION_DIRECTORY }}/app-contents/mainTemplate.bicep"
-          outputFilePath: "${{ env.APPLICATION_DIRECTORY }}/app-contents/azuredeploy.json"
+          bicepFilePath: "${{ env.APPLICATION_DIRECTORY }}/mainTemplate.bicep"
+          outputFilePath: "${{ env.APPLICATION_DIRECTORY }}/azuredeploy.json"
 
       - uses: EndBug/add-and-commit@v9
         with:
